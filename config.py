@@ -21,9 +21,15 @@ TARGET_USERS = [
 ]
 
 # Chat filters (optional)
-EXCLUDED_CHATS = [
+ALLOWED_CHATS = [
     # Add chat IDs to exclude from monitoring, example:
     # -1001234567890,
+    152284712,
+    208990898,
+    304202709,
+    38967691,
+    -1002394889057,
+    8185105591
 ]
 
 # Message content filters

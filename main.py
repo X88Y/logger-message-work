@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Telegram User Bot - Message Monitor
-Monitors all chats using Pyrogram and sends message info via Aiogram bot.
+Monitors all chats using Pyrogram and sends message info via python-telegram-bot.
 """
 
 import asyncio
@@ -9,13 +9,12 @@ import logging
 from datetime import datetime
 from pyrogram import Client, filters
 from pyrogram.types import Message as PyrogramMessage
-from aiogram import Bot, Dispatcher, types
-from aiogram.filters import Command
-from aiogram.types import Message as AiogramMessage
+from telegram import Bot
+from telegram.constants import ParseMode
 from config import (
-    API_ID, API_HASH, USER_SESSION,
+    ALLOWED_CHATS, API_ID, API_HASH, USER_SESSION,
     BOT_TOKEN,
-    TARGET_USERS, EXCLUDED_CHATS,
+    TARGET_USERS,
     MIN_MESSAGE_LENGTH, INCLUDE_MEDIA,
     INCLUDE_PRIVATE_CHATS, INCLUDE_GROUPS, INCLUDE_CHANNELS,
     LOG_LEVEL
@@ -35,18 +34,15 @@ user_bot = Client(
     api_hash=API_HASH
 )
 
-# Initialize Aiogram bot and dispatcher
-aiogram_bot = Bot(token=BOT_TOKEN)
-
-# Global variable to store aiogram bot instance for access in pyrogram handlers
-bot_instance = None
+# Initialize python-telegram-bot
+telegram_bot = Bot(token=BOT_TOKEN)
 
 async def format_message_info(message: PyrogramMessage) -> str:
     """Format message information for reporting."""
     info_parts = []
     
     # Basic message info
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    timestamp = datetime.now().strftime("%Y\.%m\.%d %H:%M:%S")
     info_parts.append(f"🕒 *Time:* {timestamp}")
     
     # Chat information
@@ -102,8 +98,6 @@ async def format_message_info(message: PyrogramMessage) -> str:
     if message.forward_from or message.forward_from_chat:
         info_parts.append("🔄 *Forwarded:* This is a forwarded message")
     
-    info_parts.append(f"🔗 *Message ID:* `{message.id}`")
-    
     return "\n".join(info_parts)
 
 def should_process_message(message: PyrogramMessage) -> bool:
@@ -114,8 +108,8 @@ def should_process_message(message: PyrogramMessage) -> bool:
         return False
     
     # Skip excluded chats
-    if message.chat.id in EXCLUDED_CHATS:
-        return False
+    if message.chat.id in ALLOWED_CHATS:
+        return True
     
     # Check chat type filters
     if message.chat.type:
@@ -139,7 +133,6 @@ def should_process_message(message: PyrogramMessage) -> bool:
 
 @user_bot.on_message(filters.all)
 async def handle_message(client: Client, message: PyrogramMessage):
-    print(message)
     """Handle incoming messages from all chats."""
     try:
         # Skip if message doesn't meet criteria
@@ -155,13 +148,13 @@ async def handle_message(client: Client, message: PyrogramMessage):
         # Format message information
         message_info = await format_message_info(message)
         
-        # Send to target users via aiogram bot
+        # Send to target users via telegram bot
         for user_id in TARGET_USERS:
             try:
-                await aiogram_bot.send_message(
+                await telegram_bot.send_message(
                     chat_id=user_id,
                     text=f"📨 *New Message Detected*\n\n{message_info}",
-                    parse_mode="MarkdownV2"
+                    parse_mode=ParseMode.MARKDOWN_V2
                 )
                 logger.info(f"Message info sent to user: {user_id}")
             except Exception as e:
@@ -170,7 +163,7 @@ async def handle_message(client: Client, message: PyrogramMessage):
     except Exception as e:
         logger.error(f"Error handling message: {e}")
 
-async def main():
+def main():
     """Main function to run both bots."""
     logger.info("Starting Telegram Message Monitor...")
     
@@ -189,4 +182,4 @@ async def main():
     user_bot.run()
  
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    main()
